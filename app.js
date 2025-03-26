@@ -14,6 +14,7 @@ wss.on('connection', (ws) => {
     teamName: null,
     location: null // Will store { latitude, longitude }
   });
+  console.log(ws);
 
   ws.on('message', (message) => {
     try {
@@ -93,6 +94,12 @@ function broadcastUpdates() {
         teamName: c.teamName,
         distance: calculateDistance(current.location, c.location)
       }));
+
+      console.log(`Nearby teams for ${current.id} (${current.teamName}) at`, 
+        `Lat: ${current.location.latitude}, Lon: ${current.location.longitude}:`);
+      nearbyTeams.forEach(team => {
+        console.log(`- ${team.teamName}: ${Math.round(team.distance)} meters away`);
+      });
     
     updates.set(current.ws, nearbyTeams);
   });
