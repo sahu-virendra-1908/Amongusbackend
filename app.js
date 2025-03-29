@@ -88,7 +88,7 @@ function broadcastUpdates() {
         other.teamName && 
         other.location &&
         other.teamName !== current.teamName &&
-        calculateDistance(current.location, other.location) < 100 // 100 meters
+        calculateDistance(current.location, other.location) <= 10 // 10 meters
       )
       .map(c => ({
         teamName: c.teamName,
