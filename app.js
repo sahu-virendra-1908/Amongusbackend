@@ -69,6 +69,59 @@ function calculateDistance(loc1, loc2) {
   return R * c; // Distance in meters
 }
 
+// function broadcastUpdates() {
+//   const activeClients = Array.from(clients.entries())
+//     .filter(([ws]) => ws.readyState === WebSocket.OPEN)
+//     .map(([ws, clientData]) => ({
+//       ws,
+//       ...clientData
+//     }));
+
+//   // Prepare updates for each client
+//   const updates = new Map();
+  
+//   activeClients.forEach(current => {
+//     if (!current.location || !current.teamName) return;
+    
+//     const nearbyTeams = activeClients
+//       .filter(other => 
+//         other.teamName && 
+//         other.location &&
+//         other.teamName !== current.teamName &&
+//         calculateDistance(current.location, other.location)<=10 // 10 meters
+//       )
+//       .map(c => ({
+//         teamName: c.teamName,
+//         distance: calculateDistance(current.location, c.location)
+//       }));
+
+//       console.log(`Nearby teams for ${current.id} (${current.teamName}) at`, 
+//         `Lat: ${current.location.latitude}, Lon: ${current.location.longitude}:`);
+//       nearbyTeams.forEach(team => {
+//         console.log(`- ${team.teamName}: ${Math.round(team.distance)} meters away`);
+//       });
+    
+//     updates.set(current.ws, nearbyTeams);
+//   });
+
+//   console.log(`Broadcasting to ${activeClients.length} clients`);
+//   updates.forEach((nearbyTeams, ws) => {
+//     if (ws.readyState === WebSocket.OPEN) {
+//       try {
+//         ws.send(JSON.stringify({ 
+//           type: 'nearbyTeams',
+//           nearbyTeams 
+//         }));
+//       } catch (err) {
+//         console.error(`Error sending to ${clients.get(ws).id}:`, err);
+//       }
+//     }
+//   });
+// }
+
+// console.log('WebSocket server running on ws://localhost:8080');
+
+
 function broadcastUpdates() {
   const activeClients = Array.from(clients.entries())
     .filter(([ws]) => ws.readyState === WebSocket.OPEN)
@@ -81,36 +134,49 @@ function broadcastUpdates() {
   const updates = new Map();
   
   activeClients.forEach(current => {
-    if (!current.location) return;
+    if (!current.location || !current.teamName) return;
     
-    const nearbyTeams = activeClients
-      .filter(other => 
-        other.teamName && 
-        other.location &&
-        other.teamName !== current.teamName &&
-        calculateDistance(current.location, other.location) <= 10 // 10 meters
-      )
-      .map(c => ({
-        teamName: c.teamName,
-        distance: calculateDistance(current.location, c.location)
-      }));
-
-      console.log(`Nearby teams for ${current.id} (${current.teamName}) at`, 
-        `Lat: ${current.location.latitude}, Lon: ${current.location.longitude}:`);
-      nearbyTeams.forEach(team => {
-        console.log(`- ${team.teamName}: ${Math.round(team.distance)} meters away`);
-      });
+    // Get unique teams nearby (excluding own team)
+    const nearbyTeams = new Map(); // Use Map to ensure uniqueness by team name
     
-    updates.set(current.ws, nearbyTeams);
+    activeClients.forEach(other => {
+      // Skip if any condition is not met
+      if (!other.teamName || 
+          !other.location || 
+          other.teamName === current.teamName) return;
+      
+      const distance = calculateDistance(current.location, other.location);
+      if (distance <= 10) { // 10 meters
+        // Only add team if it's not already added or if we found a closer member
+        if (!nearbyTeams.has(other.teamName) || 
+            distance < nearbyTeams.get(other.teamName).distance) {
+          nearbyTeams.set(other.teamName, {
+            teamName: other.teamName,
+            distance: distance
+          });
+        }
+      }
+    });
+    
+    // Convert Map values to array
+    const nearbyTeamsArray = Array.from(nearbyTeams.values());
+    
+    console.log(`Nearby teams for ${current.id} (${current.teamName}) at`,
+      `Lat: ${current.location.latitude}, Lon: ${current.location.longitude}:`);
+    nearbyTeamsArray.forEach(team => {
+      console.log(`- ${team.teamName}: ${Math.round(team.distance)} meters away`);
+    });
+    
+    updates.set(current.ws, nearbyTeamsArray);
   });
 
   console.log(`Broadcasting to ${activeClients.length} clients`);
   updates.forEach((nearbyTeams, ws) => {
     if (ws.readyState === WebSocket.OPEN) {
       try {
-        ws.send(JSON.stringify({ 
+        ws.send(JSON.stringify({
           type: 'nearbyTeams',
-          nearbyTeams 
+          nearbyTeams
         }));
       } catch (err) {
         console.error(`Error sending to ${clients.get(ws).id}:`, err);
