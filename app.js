@@ -1,17 +1,20 @@
 const WebSocket = require('ws');
+
 const wss = new WebSocket.Server({ port: 8080 });
+
 let clients = new Map();
 let nextClientId = 1;
 
 wss.on('connection', (ws) => {
-  const clientId = `Client-${nextClientId++}`;
-  console.log(`${clientId} connected`);
+  const clientId = Client-${nextClientId++};
+  console.log(${clientId} connected);
   
   clients.set(ws, { 
     id: clientId,
     teamName: null,
     location: null // Will store { latitude, longitude }
   });
+  console.log(ws);
 
   ws.on('message', (message) => {
     try {
@@ -23,7 +26,7 @@ wss.on('connection', (ws) => {
           ...clients.get(ws), 
           teamName: data.teamName
         });
-        console.log(`${clientId} joined team ${data.teamName}`);
+        console.log(${clientId} joined team ${data.teamName});
       }
       
       // Handle location update
@@ -44,7 +47,7 @@ wss.on('connection', (ws) => {
   });
 
   ws.on('close', () => {
-    console.log(`${clients.get(ws).id} (${clients.get(ws).teamName}) disconnected`);
+    console.log(${clients.get(ws).id} (${clients.get(ws).teamName}) disconnected);
     clients.delete(ws);
     broadcastUpdates();
   });
@@ -57,10 +60,12 @@ function calculateDistance(loc1, loc2) {
   const φ2 = loc2.latitude * Math.PI/180;
   const Δφ = (loc2.latitude-loc1.latitude) * Math.PI/180;
   const Δλ = (loc2.longitude-loc1.longitude) * Math.PI/180;
+
   const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
             Math.cos(φ1) * Math.cos(φ2) *
             Math.sin(Δλ/2) * Math.sin(Δλ/2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
   return R * c; // Distance in meters
 }
 
@@ -76,39 +81,39 @@ function broadcastUpdates() {
   const updates = new Map();
   
   activeClients.forEach(current => {
-    if (!current.location || !current.teamName) return;
+    if (!current.location) return;
     
     const nearbyTeams = activeClients
       .filter(other => 
         other.teamName && 
         other.location &&
         other.teamName !== current.teamName &&
-        calculateDistance(current.location, other.location) <= 10 // 10 meters
+        calculateDistance(current.location, other.location)<=10 // 10 meters
       )
       .map(c => ({
         teamName: c.teamName,
         distance: calculateDistance(current.location, c.location)
       }));
 
-    console.log(`Nearby teams for ${current.id} (${current.teamName}) at 
-      Lat: ${current.location.latitude}, Lon: ${current.location.longitude}:`);
-    nearbyTeams.forEach(team => {
-      console.log(`- ${team.teamName}: ${Math.round(team.distance)} meters away`);
-    });
+      console.log(Nearby teams for ${current.id} (${current.teamName}) at, 
+        Lat: ${current.location.latitude}, Lon: ${current.location.longitude}:);
+      nearbyTeams.forEach(team => {
+        console.log(- ${team.teamName}: ${Math.round(team.distance)} meters away);
+      });
     
     updates.set(current.ws, nearbyTeams);
   });
 
-  console.log(`Broadcasting to ${activeClients.length} clients`);
+  console.log(Broadcasting to ${activeClients.length} clients);
   updates.forEach((nearbyTeams, ws) => {
     if (ws.readyState === WebSocket.OPEN) {
       try {
         ws.send(JSON.stringify({ 
           type: 'nearbyTeams',
-          teams: nearbyTeams
+          nearbyTeams 
         }));
       } catch (err) {
-        console.error(`Error sending to ${clients.get(ws).id}:`, err);
+        console.error(Error sending to ${clients.get(ws).id}:, err);
       }
     }
   });
