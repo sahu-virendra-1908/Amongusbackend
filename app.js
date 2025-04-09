@@ -81,7 +81,7 @@ function broadcastUpdates() {
   const updates = new Map();
   
   activeClients.forEach(current => {
-    if (!current.location) return;
+    if (!current.location || !current.teamName) return;
     
     const nearbyTeams = activeClients
       .filter(other => 
